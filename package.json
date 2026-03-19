@@ -6,6 +6,7 @@
   "description": "Collection of DeepAgent backends implemented in TypeScript",
   "scripts": {
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "coverage": "pnpm -r --if-present coverage",
