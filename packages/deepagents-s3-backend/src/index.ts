@@ -675,8 +675,14 @@ export class S3Backend implements BackendProtocol {
     return downloadResults;
   }
 
-  private mapError(error: unknown): FileDownloadResponse["error"] | FileUploadResponse["error"] {
-    const candidate = error as { name?: string; code?: string; message?: string };
+  private mapError(
+    error: unknown,
+  ): FileDownloadResponse["error"] | FileUploadResponse["error"] {
+    const candidate = error as {
+      name?: string;
+      code?: string;
+      message?: string;
+    };
     const code = candidate?.code;
     const name = candidate?.name;
     const message = candidate?.message;

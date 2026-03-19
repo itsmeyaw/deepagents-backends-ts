@@ -14,8 +14,8 @@ export default defineConfig([
     outDir: "dist",
     outExtensions: () => ({ js: ".js" }),
     deps: {
-        neverBundle
-    }
+      neverBundle,
+    },
   },
   {
     entry: ["./src/index.ts"],
@@ -27,7 +27,7 @@ export default defineConfig([
     outDir: "dist",
     outExtensions: () => ({ js: ".cjs" }),
     deps: {
-        neverBundle
-    }
+      neverBundle,
+    },
   },
 ]);

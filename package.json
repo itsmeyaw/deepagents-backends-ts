@@ -1,5 +1,5 @@
 {
-  "name": "deepagent-backends-ts",
+  "name": "deepagents-backends-ts",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -17,7 +17,7 @@
     "*.{js,jsx,ts,tsx,mjs,cjs}": "pnpm run lint"
   },
   "keywords": [
-    "deepagent",
+    "deepagents",
     "ai",
     "llm",
     "typescript"

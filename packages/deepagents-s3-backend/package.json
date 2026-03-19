@@ -1,5 +1,5 @@
 {
-  "name": "deepagent-s3-backend",
+  "name": "deepagents-s3-backend",
   "version": "1.8.0",
   "description": "S3 backend for DeepAgent in TypeScript",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "type": "module",
   "keywords": [
-    "deepagent",
+    "deepagents",
     "ai",
     "llm",
     "s3",

@@ -8,7 +8,7 @@ A TypeScript implementation of S3 Backend. Currently, it is using the Backend Pr
 npm add deepagent-s3-backend
 ```
 
-or 
+or
 
 ```bash
 pnpm add deepagent-s3-backend
