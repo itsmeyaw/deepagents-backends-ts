@@ -2,7 +2,9 @@
   "name": "deepagent-backends-ts",
   "version": "1.8.0",
   "description": "Collection of DeepAgent backends implemented in TypeScript",
-  "scripts": {},
+  "scripts": {
+    "format": "prettier --write ."
+  },
   "keywords": [
     "deepagent",
     "ai",
