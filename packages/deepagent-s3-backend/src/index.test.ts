@@ -231,7 +231,7 @@ describe("S3Backend.lsInfo", () => {
         path: "/users/a.txt",
         is_dir: false,
         size: 10,
-        modified_at: new Date("2026-03-10T00:00:00.000Z").getTime(),
+        modified_at: "2026-03-10T00:00:00.000Z",
       },
       {
         path: "/users/docs/",
@@ -293,13 +293,13 @@ describe("S3Backend.lsInfo", () => {
         path: "/users/a.txt",
         is_dir: false,
         size: 1,
-        modified_at: new Date("2026-03-11T00:00:00.000Z").getTime(),
+        modified_at: "2026-03-11T00:00:00.000Z",
       },
       {
         path: "/users/b.txt",
         is_dir: false,
         size: 2,
-        modified_at: new Date("2026-03-12T00:00:00.000Z").getTime(),
+        modified_at: "2026-03-12T00:00:00.000Z",
       },
       {
         path: "/users/docs/",
@@ -733,13 +733,13 @@ describe("S3Backend.globInfo", () => {
         path: "/logs/app.log",
         is_dir: false,
         size: 20,
-        modified_at: new Date("2026-03-17T00:00:00.000Z").getTime(),
+        modified_at: "2026-03-17T00:00:00.000Z",
       },
       {
         path: "/logs/errors/trace.log",
         is_dir: false,
         size: 40,
-        modified_at: new Date("2026-03-18T00:00:00.000Z").getTime(),
+        modified_at: "2026-03-18T00:00:00.000Z",
       },
     ]);
 
@@ -780,7 +780,7 @@ describe("S3Backend.globInfo", () => {
         path: "/base/a.ts",
         is_dir: false,
         size: 1,
-        modified_at: new Date("2026-03-18T12:00:00.000Z").getTime(),
+        modified_at: "2026-03-18T12:00:00.000Z",
       },
     ]);
 

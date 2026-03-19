@@ -19,9 +19,8 @@ import {
   WriteResult,
   BackendProtocol,
 } from "deepagents";
-import type { IncomingMessage } from "http";
-import m from "micromatch";
-import type { Readable } from "stream";
+import * as m from "micromatch";
+
 export class S3Backend implements BackendProtocol {
   private s3Client: S3Client;
   protected bucketName: string;
@@ -130,15 +129,12 @@ export class S3Backend implements BackendProtocol {
           const relativeKey = key.slice(listPrefix.length);
           return relativeKey.length > 0 && !relativeKey.includes("/");
         })
-        .map(
-          (obj) =>
-            ({
-              path: `/${obj.Key}`,
-              is_dir: false,
-              size: obj.Size,
-              modified_at: obj.LastModified?.getTime(),
-            }) as FileInfo,
-        );
+        .map((obj) => ({
+          path: `/${obj.Key}`,
+          is_dir: false,
+          size: obj.Size,
+          modified_at: obj.LastModified?.toISOString(),
+        }));
 
       const directDirectories = (result.CommonPrefixes || [])
         .map((prefix) => prefix.Prefix || "")
@@ -401,15 +397,12 @@ export class S3Backend implements BackendProtocol {
 
           return this.matchesGlob(key, prefix, pattern);
         })
-        .map(
-          (obj) =>
-            ({
-              path: `/${obj.Key}`,
-              is_dir: false,
-              size: obj.Size,
-              modified_at: obj.LastModified?.getTime(),
-            }) as FileInfo,
-        );
+        .map((obj) => ({
+          path: `/${obj.Key}`,
+          is_dir: false,
+          size: obj.Size,
+          modified_at: obj.LastModified?.toISOString(),
+        }));
     } catch (error) {
       throw error;
     }
