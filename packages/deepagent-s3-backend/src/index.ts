@@ -27,6 +27,18 @@ export class S3Backend implements BackendProtocol {
   protected cwd: string;
   private maxFileSizeBytes: number | undefined;
 
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    if (typeof error === "string" && error.length > 0) {
+      return error;
+    }
+
+    return fallback;
+  }
+
   constructor(
     options: {
       s3ClientConfig?: ConstructorParameters<typeof S3Client>;
@@ -185,7 +197,7 @@ export class S3Backend implements BackendProtocol {
         .map((line, index) => `${offset + index + 1}: ${line}`)
         .join("\n");
     } catch (error) {
-      throw error;
+      return this.getErrorMessage(error, "Unknown error during read operation");
     }
   }
 
@@ -251,7 +263,13 @@ export class S3Backend implements BackendProtocol {
         modified_at: headInfo.modified_at,
       };
     } catch (error) {
-      throw error;
+      return {
+        content: [
+          this.getErrorMessage(error, "Unknown error during readRaw operation"),
+        ],
+        created_at: "",
+        modified_at: "",
+      };
     }
   }
 
@@ -346,7 +364,7 @@ export class S3Backend implements BackendProtocol {
 
       return objectMatches.flat();
     } catch (error) {
-      throw error;
+      return this.getErrorMessage(error, "Unknown error during grep operation");
     }
   }
 
@@ -404,7 +422,17 @@ export class S3Backend implements BackendProtocol {
           modified_at: obj.LastModified?.toISOString(),
         }));
     } catch (error) {
-      throw error;
+      return [
+        {
+          path: this.getErrorMessage(
+            error,
+            "Unknown error during glob operation",
+          ),
+          is_dir: false,
+          size: undefined,
+          modified_at: undefined,
+        },
+      ];
     }
   }
 
@@ -450,8 +478,10 @@ export class S3Backend implements BackendProtocol {
       };
     } catch (error) {
       return {
-        error:
-          (error as Error).message || "Unknown error during write operation",
+        error: this.getErrorMessage(
+          error,
+          "Unknown error during write operation",
+        ),
       };
     }
   }
@@ -506,8 +536,10 @@ export class S3Backend implements BackendProtocol {
       };
     } catch (error) {
       return {
-        error:
-          (error as Error).message || "Unknown error during edit operation",
+        error: this.getErrorMessage(
+          error,
+          "Unknown error during edit operation",
+        ),
       };
     }
   }
@@ -546,7 +578,7 @@ export class S3Backend implements BackendProtocol {
         } catch (error) {
           uploadResults.push({
             path: filePath,
-            error: null,
+            error: this.mapError(error),
           });
         }
       }),
@@ -563,33 +595,6 @@ export class S3Backend implements BackendProtocol {
    * @returns List of FileDownloadResponse objects, one per input path
    */
   async downloadFiles(paths: string[]): Promise<FileDownloadResponse[]> {
-    const mapDownloadError = (
-      error: unknown,
-    ): FileDownloadResponse["error"] => {
-      const candidate = error as { name?: string; code?: string };
-      const code = candidate?.code;
-      const name = candidate?.name;
-
-      if (code === "NoSuchKey" || code === "ENOENT" || name === "NoSuchKey") {
-        return "file_not_found";
-      }
-
-      if (
-        code === "AccessDenied" ||
-        code === "Forbidden" ||
-        code === "EACCES" ||
-        name === "AccessDenied"
-      ) {
-        return "permission_denied";
-      }
-
-      if (code === "EISDIR") {
-        return "is_directory";
-      }
-
-      return "invalid_path";
-    };
-
     const downloadResults = await Promise.all(
       paths.map(async (filePath) => {
         try {
@@ -661,13 +666,46 @@ export class S3Backend implements BackendProtocol {
           return {
             path: filePath,
             content: null,
-            error: mapDownloadError(error),
+            error: this.mapError(error),
           };
         }
       }),
     );
 
     return downloadResults;
+  }
+
+  private mapError(error: unknown): FileDownloadResponse["error"] | FileUploadResponse["error"] {
+    const candidate = error as { name?: string; code?: string; message?: string };
+    const code = candidate?.code;
+    const name = candidate?.name;
+    const message = candidate?.message;
+
+    if (
+      code === "NoSuchKey" ||
+      code === "ENOENT" ||
+      name === "NoSuchKey" ||
+      message === "NoSuchKey"
+    ) {
+      return "file_not_found";
+    }
+
+    if (
+      code === "AccessDenied" ||
+      code === "Forbidden" ||
+      code === "EACCES" ||
+      name === "AccessDenied" ||
+      message === "AccessDenied" ||
+      message === "Forbidden"
+    ) {
+      return "permission_denied";
+    }
+
+    if (code === "EISDIR" || message === "EISDIR") {
+      return "is_directory";
+    }
+
+    return "invalid_path";
   }
 
   async dangerouslyListAllObjects(

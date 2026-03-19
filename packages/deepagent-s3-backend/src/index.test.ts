@@ -54,9 +54,7 @@ function bodyWithTransformToByteArray(content: Uint8Array): {
 
 describe("S3Backend.constructor", () => {
   it("throws when bucketName is not provided", () => {
-    expect(() => new S3Backend()).toThrow(
-      "bucketName is required in options",
-    );
+    expect(() => new S3Backend()).toThrow("bucketName is required in options");
   });
 });
 
@@ -487,14 +485,14 @@ describe("S3Backend.read", () => {
     expect(result).toBe("");
   });
 
-  it("rethrows errors from readRaw", async () => {
+  it("returns readRaw errors as a message", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
     });
     vi.spyOn(backend, "readRaw").mockRejectedValue(new Error("s3 read failed"));
 
-    await expect(backend.read("/a.txt")).rejects.toThrow("s3 read failed");
+    await expect(backend.read("/a.txt")).resolves.toBe("s3 read failed");
   });
 });
 
@@ -620,7 +618,7 @@ describe("S3Backend.readRaw", () => {
     });
   });
 
-  it("rethrows S3 errors", async () => {
+  it("returns S3 errors in file data content", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
@@ -630,7 +628,11 @@ describe("S3Backend.readRaw", () => {
       send,
     };
 
-    await expect(backend.readRaw("a.txt")).rejects.toThrow("network timeout");
+    await expect(backend.readRaw("a.txt")).resolves.toEqual({
+      content: ["network timeout"],
+      created_at: "",
+      modified_at: "",
+    });
   });
 });
 
@@ -782,7 +784,10 @@ describe("S3Backend.grepRaw", () => {
     const send = vi
       .fn()
       .mockResolvedValueOnce({
-        Contents: [{ Key: "", Size: 1 }, { Key: "logs/no-body.txt", Size: 2 }],
+        Contents: [
+          { Key: "", Size: 1 },
+          { Key: "logs/no-body.txt", Size: 2 },
+        ],
         CommonPrefixes: [],
         IsTruncated: false,
       })
@@ -798,13 +803,13 @@ describe("S3Backend.grepRaw", () => {
     expect(send).toHaveBeenCalledTimes(2);
   });
 
-  it("rethrows when path resolution fails", async () => {
+  it("returns path resolution errors as message", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
     });
 
-    await expect(backend.grepRaw("needle", "../blocked")).rejects.toThrow(
+    await expect(backend.grepRaw("needle", "../blocked")).resolves.toBe(
       "Path traversal is not allowed",
     );
   });
@@ -909,15 +914,20 @@ describe("S3Backend.globInfo", () => {
     expect(listInput.Prefix).toBe("base");
   });
 
-  it("rethrows errors for invalid search paths", async () => {
+  it("returns invalid search path errors inside FileInfo", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
     });
 
-    await expect(backend.globInfo("*.log", "../blocked")).rejects.toThrow(
-      "Path traversal is not allowed",
-    );
+    await expect(backend.globInfo("*.log", "../blocked")).resolves.toEqual([
+      {
+        path: "Path traversal is not allowed",
+        is_dir: false,
+        size: undefined,
+        modified_at: undefined,
+      },
+    ]);
   });
 });
 
@@ -1535,7 +1545,7 @@ describe("S3Backend.uploadFiles", () => {
     expect(result).toEqual(
       expect.arrayContaining([
         { path: "/ok.txt", error: null },
-        { path: "/denied.txt", error: null },
+        { path: "/denied.txt", error: "permission_denied" },
       ]),
     );
     expect(result).toHaveLength(2);
@@ -1559,7 +1569,7 @@ describe("S3Backend.uploadFiles", () => {
 
     expect(result).toEqual(
       expect.arrayContaining([
-        { path: "../blocked.txt", error: null },
+        { path: "../blocked.txt", error: "invalid_path" },
         { path: "/safe.txt", error: null },
       ]),
     );
