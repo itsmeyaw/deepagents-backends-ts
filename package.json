@@ -1,0 +1,23 @@
+{
+  "name": "deepagent-backends-ts",
+  "version": "1.8.0",
+  "description": "Collection of DeepAgent backends implemented in TypeScript",
+  "scripts": {},
+  "keywords": [
+    "deepagent",
+    "ai",
+    "llm",
+    "typescript"
+  ],
+  "author": "Yudhistira Arief Wibowo <yudhistira.wibowo@itsmeyaw.id>",
+  "license": "MIT",
+  "packageManager": "pnpm@10.32.1",
+  "devDependencies": {
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  },
+  "peerDependencies": {
+    "deepagents": "^1.8.0"
+  }
+}
