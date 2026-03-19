@@ -13,3 +13,8 @@ or
 ```bash
 pnpm add deepagent-s3-backend
 ```
+
+## Usage
+
+Apart from the client configuration for AWS S3 SDK, you need to pass the bucket
+name. Additionally, you can pass the root prefix and maximum file size (in Megabytes).

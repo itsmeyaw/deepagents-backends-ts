@@ -3,9 +3,11 @@
   "version": "1.8.0",
   "description": "S3 backend for DeepAgent in TypeScript",
   "scripts": {
+    "build": "tsdown",
     "test": "vitest run",
     "coverage": "vitest run --coverage"
   },
+  "type": "module",
   "keywords": [
     "deepagent",
     "ai",
