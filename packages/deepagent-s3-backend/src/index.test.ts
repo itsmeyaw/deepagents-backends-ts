@@ -52,6 +52,14 @@ function bodyWithTransformToByteArray(content: Uint8Array): {
   };
 }
 
+describe("S3Backend.constructor", () => {
+  it("throws when bucketName is not provided", () => {
+    expect(() => new S3Backend()).toThrow(
+      "bucketName is required in options",
+    );
+  });
+});
+
 describe("S3Backend.resolvePath", () => {
   describe("normalization", () => {
     it("resolves absolute path from root", () => {
@@ -318,6 +326,50 @@ describe("S3Backend.lsInfo", () => {
 
     expect(firstCallInput.ContinuationToken).toBeUndefined();
     expect(secondCallInput.ContinuationToken).toBe("token-1");
+  });
+
+  it("ignores common prefixes outside of the requested directory", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+
+    const send = vi.fn().mockResolvedValue({
+      Contents: [],
+      CommonPrefixes: [{ Prefix: "users/docs/" }, { Prefix: "other/path/" }],
+      IsTruncated: false,
+    });
+
+    (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
+      send,
+    };
+
+    const result = await backend.lsInfo("/users");
+
+    expect(result).toEqual([
+      {
+        path: "/users/docs/",
+        is_dir: true,
+        size: undefined,
+        modified_at: undefined,
+      },
+    ]);
+  });
+
+  it("returns an empty list when listing fails", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+    const send = vi.fn().mockRejectedValue(new Error("List failed"));
+
+    (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
+      send,
+    };
+
+    const result = await backend.lsInfo("/users");
+
+    expect(result).toEqual([]);
   });
 });
 
@@ -687,6 +739,75 @@ describe("S3Backend.grepRaw", () => {
       { path: "/logs/ok.txt", line: 1, text: "needle survives" },
     ]);
   });
+
+  it("skips objects that exceed maxFileSizeMb", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+      maxFileSizeMb: 0.00001,
+    });
+
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({
+        Contents: [
+          { Key: "logs/small.txt", Size: 5 },
+          { Key: "logs/large.txt", Size: 1000 },
+        ],
+        CommonPrefixes: [],
+        IsTruncated: false,
+      })
+      .mockResolvedValueOnce({
+        Body: bodyWithTransformToString("needle in small"),
+      });
+
+    (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
+      send,
+    };
+
+    const result = await backend.grepRaw("needle", "/logs");
+
+    expect(result).toEqual([
+      { path: "/logs/small.txt", line: 1, text: "needle in small" },
+    ]);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores listed objects that have no key and objects with empty body", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce({
+        Contents: [{ Key: "", Size: 1 }, { Key: "logs/no-body.txt", Size: 2 }],
+        CommonPrefixes: [],
+        IsTruncated: false,
+      })
+      .mockResolvedValueOnce({ Body: undefined });
+
+    (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
+      send,
+    };
+
+    const result = await backend.grepRaw("needle", "/logs");
+
+    expect(result).toEqual([]);
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("rethrows when path resolution fails", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+
+    await expect(backend.grepRaw("needle", "../blocked")).rejects.toThrow(
+      "Path traversal is not allowed",
+    );
+  });
 });
 
 describe("S3Backend.globInfo", () => {
@@ -786,6 +907,17 @@ describe("S3Backend.globInfo", () => {
 
     const listInput = send.mock.calls[0][0].input as { Prefix?: string };
     expect(listInput.Prefix).toBe("base");
+  });
+
+  it("rethrows errors for invalid search paths", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+
+    await expect(backend.globInfo("*.log", "../blocked")).rejects.toThrow(
+      "Path traversal is not allowed",
+    );
   });
 });
 
@@ -1554,5 +1686,124 @@ describe("S3Backend.downloadFiles", () => {
       Bucket: "test-bucket",
       Key: "safe.txt",
     });
+  });
+
+  it("maps empty object body to file_not_found", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+    const send = vi.fn().mockResolvedValue({ Body: undefined });
+
+    (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
+      send,
+    };
+
+    const result = await backend.downloadFiles(["/empty.txt"]);
+
+    expect(result).toEqual([
+      { path: "/empty.txt", content: null, error: "file_not_found" },
+    ]);
+  });
+
+  it("uses transformToString fallback when byte-array transform is unavailable", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+    const send = vi.fn().mockResolvedValue({
+      Body: bodyWithTransformToString("hello"),
+    });
+
+    (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
+      send,
+    };
+
+    const result = await backend.downloadFiles(["/text.txt"]);
+
+    expect(result).toEqual([
+      {
+        path: "/text.txt",
+        content: new TextEncoder().encode("hello"),
+        error: null,
+      },
+    ]);
+  });
+
+  it("uses transformToWebStream fallback and merges chunks", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+
+    const read = vi
+      .fn()
+      .mockResolvedValueOnce({ done: false, value: undefined })
+      .mockResolvedValueOnce({ done: false, value: new Uint8Array([1, 2]) })
+      .mockResolvedValueOnce({ done: false, value: new Uint8Array([3]) })
+      .mockResolvedValueOnce({ done: true, value: undefined });
+
+    const send = vi.fn().mockResolvedValue({
+      Body: {
+        transformToWebStream: () =>
+          ({
+            getReader: () => ({
+              read,
+            }),
+          }) as unknown as ReadableStream<Uint8Array>,
+      },
+    });
+
+    (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
+      send,
+    };
+
+    const result = await backend.downloadFiles(["/stream.bin"]);
+
+    expect(result).toEqual([
+      {
+        path: "/stream.bin",
+        content: new Uint8Array([1, 2, 3]),
+        error: null,
+      },
+    ]);
+  });
+
+  it("returns invalid_path when body has no supported transform methods", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+    const send = vi.fn().mockResolvedValue({
+      Body: {},
+    });
+
+    (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
+      send,
+    };
+
+    const result = await backend.downloadFiles(["/unsupported.bin"]);
+
+    expect(result).toEqual([
+      { path: "/unsupported.bin", content: null, error: "invalid_path" },
+    ]);
+  });
+
+  it("maps EISDIR to is_directory", async () => {
+    const backend = new S3Backend({
+      bucketName: "test-bucket",
+      rootPrefix: "/",
+    });
+    const send = vi.fn().mockRejectedValue({ code: "EISDIR" });
+
+    (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
+      send,
+    };
+
+    const result = await backend.downloadFiles(["/folder"]);
+
+    expect(result).toEqual([
+      { path: "/folder", content: null, error: "is_directory" },
+    ]);
   });
 });
