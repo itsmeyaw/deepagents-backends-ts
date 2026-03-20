@@ -12,11 +12,12 @@
     "coverage": "pnpm -r --if-present coverage",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
+    "lint-staged": "lint-staged",
     "release": "pnpm build && changeset publish",
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,mjs,cjs}": "pnpm run lint"
+    "*.{js,jsx,ts,tsx,mjs,cjs}": "pnpm run lint --fix && pnpm run format"
   },
   "keywords": [
     "deepagents",
