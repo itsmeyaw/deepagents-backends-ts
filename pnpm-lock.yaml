@@ -55,8 +55,8 @@ importers:
         specifier: ^1.8.4
         version: 1.8.4
       deepagents-s3-backend:
-        specifier: ^1.8.2
-        version: 1.8.2(deepagents@1.8.4)
+        specifier: ^1.8.4
+        version: 1.8.4(deepagents@1.8.4)
       dotenv:
         specifier: ^17.3.1
         version: 17.3.1
@@ -1433,8 +1433,8 @@ packages:
     resolution: {integrity: sha512-z2S+W9X73hAUUki+N+9Za2lBlun89zigOyGrsax+KUQ6wKW4ZoWpEYBkGhQjwAjjDCkWxhY0VKEhk8wzY7F5cA==}
     engines: {node: '>=0.10.0'}
 
-  deepagents-s3-backend@1.8.2:
-    resolution: {integrity: sha512-oLNrlKLHZq9GTGaJrvnTIqJUqVgiF1xZJ7UtU9bmqr0EEgvOxZElBqNttGPzJUqPZZomrgZDoMGrZ142sht+fQ==}
+  deepagents-s3-backend@1.8.4:
+    resolution: {integrity: sha512-gXHXzKxMM1wWc+YGn2dleC5K6m/w/RTH4SPjQUR/hfDcoQcnbvekPyLdAanov7YJ25HUmTStvaEDK8yxhIcrcQ==}
     peerDependencies:
       deepagents: ^1.8.0
 
@@ -4187,7 +4187,7 @@ snapshots:
 
   decamelize@1.2.0: {}
 
-  deepagents-s3-backend@1.8.2(deepagents@1.8.4):
+  deepagents-s3-backend@1.8.4(deepagents@1.8.4):
     dependencies:
       '@aws-sdk/client-s3': 3.1012.0
       deepagents: 1.8.4
