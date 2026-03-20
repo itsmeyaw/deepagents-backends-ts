@@ -36,5 +36,13 @@
     "builtin": true
   },
   "globals": {},
-  "ignorePatterns": []
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "coverage",
+    "build",
+    "out",
+    "public",
+    "*test.ts"
+  ]
 }

@@ -7,6 +7,7 @@ import {
   _Object,
   ListObjectsV2CommandOutput,
   PutObjectCommand,
+  S3ClientConfig,
 } from "@aws-sdk/client-s3";
 import type { NodeJsRuntimeStreamingBlobPayloadOutputTypes } from "@smithy/types";
 import {
@@ -41,7 +42,7 @@ export class S3Backend implements BackendProtocol {
 
   constructor(
     options: {
-      s3ClientConfig?: ConstructorParameters<typeof S3Client>;
+      s3ClientConfig?: S3ClientConfig;
       bucketName?: string;
       rootPrefix?: string;
       maxFileSizeMb?: number;
@@ -239,21 +240,9 @@ export class S3Backend implements BackendProtocol {
         modified_at: headObjectResult.LastModified?.toISOString() || "",
       };
 
-      const stream = getObjectResult.Body as ReadableStream;
-      const reader = stream.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let content = "";
-      let done = false;
-
-      while (!done) {
-        const { value, done: streamDone } = await reader.read();
-        if (value) {
-          content += decoder.decode(value, { stream: true });
-        }
-        done = streamDone;
-      }
-
-      content += decoder.decode();
+      const stream =
+        getObjectResult.Body as NodeJsRuntimeStreamingBlobPayloadOutputTypes;
+      const content = await stream.transformToString("utf-8");
 
       const lines = content.split(/\r?\n/);
 
@@ -338,7 +327,8 @@ export class S3Backend implements BackendProtocol {
               return [] as GrepMatch[];
             }
 
-            const content = await getObjectResult.Body.transformToString();
+            const content =
+              await getObjectResult.Body.transformToString("utf-8");
             const lines = content.split(/\r?\n/);
             const fileMatches: GrepMatch[] = [];
 
@@ -447,17 +437,15 @@ export class S3Backend implements BackendProtocol {
     try {
       const resolvedPath = this.resolvePath(filePath);
 
-      const getObjectResult = await this.s3Client.send(
-        new GetObjectCommand({
-          Bucket: this.bucketName,
-          Key: resolvedPath.slice(1),
-        }),
-      );
-
-      if (getObjectResult.Body) {
-        return {
-          error: `File already exists at path: ${resolvedPath}`,
-        };
+      try {
+        await this.s3Client.send(
+          new HeadObjectCommand({
+            Bucket: this.bucketName,
+            Key: resolvedPath.slice(1),
+          }),
+        );
+      } catch {
+        // continue because file does not exists
       }
 
       const creationTime = new Date().toISOString();

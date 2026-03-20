@@ -510,7 +510,7 @@ describe("S3Backend.readRaw", () => {
     const send = vi
       .fn()
       .mockResolvedValueOnce({
-        Body: streamFromChunks([bytes.slice(0, 6), bytes.slice(6)]),
+        Body: bodyWithTransformToString(text),
       })
       .mockResolvedValueOnce({
         ContentLength: bytes.length,
@@ -552,7 +552,7 @@ describe("S3Backend.readRaw", () => {
     const send = vi
       .fn()
       .mockResolvedValueOnce({
-        Body: streamFromChunks([bytes.slice(0, 3), bytes.slice(3)]),
+        Body: bodyWithTransformToString("A😊B"),
       })
       .mockResolvedValueOnce({
         Metadata: {},
@@ -598,7 +598,7 @@ describe("S3Backend.readRaw", () => {
     const send = vi
       .fn()
       .mockResolvedValueOnce({
-        Body: streamFromChunks([new TextEncoder().encode("one\ntwo")]),
+        Body: bodyWithTransformToString("one\ntwo"),
       })
       .mockResolvedValueOnce({
         Metadata: undefined,
@@ -1146,12 +1146,15 @@ describe("S3Backend.write", () => {
     });
   });
 
-  it("returns the S3 error message when GetObject fails", async () => {
+  it("continues to PutObject when GetObject fails", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
     });
-    const send = vi.fn().mockRejectedValueOnce(new Error("NoSuchKey"));
+    const send = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("NoSuchKey"))
+      .mockResolvedValueOnce({});
 
     (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
       send,
@@ -1159,8 +1162,19 @@ describe("S3Backend.write", () => {
 
     const result = await backend.write("/missing.txt", "content");
 
-    expect(result).toEqual({ error: "NoSuchKey" });
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      path: "/missing.txt",
+      filesUpdate: null,
+    });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0].input).toEqual({
+      Bucket: "test-bucket",
+      Key: "missing.txt",
+      Body: "content",
+      Metadata: {
+        CreatedAt: expect.any(String),
+      },
+    });
   });
 
   it("returns the S3 error message when PutObject fails", async () => {
@@ -1200,12 +1214,12 @@ describe("S3Backend.write", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("falls back to unknown error message for non-Error throwables", async () => {
+  it("continues to PutObject for non-Error GetObject throwables", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
     });
-    const send = vi.fn().mockRejectedValueOnce({});
+    const send = vi.fn().mockRejectedValueOnce({}).mockResolvedValueOnce({});
 
     (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
       send,
@@ -1213,8 +1227,19 @@ describe("S3Backend.write", () => {
 
     const result = await backend.write("/docs/file.txt", "content");
 
-    expect(result).toEqual({ error: "Unknown error during write operation" });
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      path: "/docs/file.txt",
+      filesUpdate: null,
+    });
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1][0].input).toEqual({
+      Bucket: "test-bucket",
+      Key: "docs/file.txt",
+      Body: "content",
+      Metadata: {
+        CreatedAt: expect.any(String),
+      },
+    });
   });
 });
 
