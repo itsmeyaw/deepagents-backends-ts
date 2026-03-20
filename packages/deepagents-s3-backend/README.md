@@ -61,7 +61,7 @@ async function main() {
   });
 
   console.log(
-    deepAgent.invole({
+    deepAgent.invoke({
       messages: [
         {
           role: "user",
