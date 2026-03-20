@@ -444,6 +444,10 @@ export class S3Backend implements BackendProtocol {
             Key: resolvedPath.slice(1),
           }),
         );
+
+        return {
+          error: `File already exists at path: ${resolvedPath}`,
+        };
       } catch {
         // continue because file does not exists
       }

@@ -1055,7 +1055,7 @@ describe("S3Backend.write", () => {
     });
     const send = vi
       .fn()
-      .mockResolvedValueOnce({ Body: undefined })
+      .mockRejectedValueOnce(new Error("NotFound"))
       .mockResolvedValueOnce({});
 
     (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
@@ -1089,14 +1089,14 @@ describe("S3Backend.write", () => {
     vi.useRealTimers();
   });
 
-  it("creates a new object when GetObject returns a null Body", async () => {
+  it("creates a new object when HeadObject reports missing object", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
     });
     const send = vi
       .fn()
-      .mockResolvedValueOnce({ Body: null })
+      .mockRejectedValueOnce(new Error("NotFound"))
       .mockResolvedValueOnce({});
 
     (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
@@ -1121,14 +1121,12 @@ describe("S3Backend.write", () => {
     });
   });
 
-  it("returns an already-exists error and skips PutObject when Body is present", async () => {
+  it("returns an already-exists error and skips PutObject when HeadObject succeeds", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
     });
-    const send = vi
-      .fn()
-      .mockResolvedValueOnce({ Body: bodyWithTransformToString("existing") });
+    const send = vi.fn().mockResolvedValueOnce({});
 
     (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
       send,
@@ -1146,7 +1144,7 @@ describe("S3Backend.write", () => {
     });
   });
 
-  it("continues to PutObject when GetObject fails", async () => {
+  it("continues to PutObject when HeadObject fails", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
@@ -1184,7 +1182,7 @@ describe("S3Backend.write", () => {
     });
     const send = vi
       .fn()
-      .mockResolvedValueOnce({ Body: undefined })
+      .mockRejectedValueOnce(new Error("NotFound"))
       .mockRejectedValueOnce(new Error("AccessDenied"));
 
     (backend as unknown as { s3Client: { send: typeof send } }).s3Client = {
@@ -1214,7 +1212,7 @@ describe("S3Backend.write", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("continues to PutObject for non-Error GetObject throwables", async () => {
+  it("continues to PutObject for non-Error HeadObject throwables", async () => {
     const backend = new S3Backend({
       bucketName: "test-bucket",
       rootPrefix: "/",
