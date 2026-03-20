@@ -1,4 +1,4 @@
-# DeepAgents S3 Backend (TypeScript)
+# DeepAgents S3 Backend
 
 A TypeScript implementation of S3 Backend. Currently, it is using the Backend Protocol V1.
 
