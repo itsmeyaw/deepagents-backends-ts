@@ -5,7 +5,7 @@ A TypeScript implementation of S3 Backend. Currently, it is using the Backend Pr
 ## Installation
 
 ```bash
-npm add deepagent-s3-backend
+npm install deepagent-s3-backend
 ```
 
 or
