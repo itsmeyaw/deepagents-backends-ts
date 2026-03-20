@@ -17,7 +17,7 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,mjs,cjs}": "pnpm run lint --fix && pnpm run format"
+    "*.{js,jsx,ts,tsx,mjs,cjs,json,yml}": "pnpm run lint --fix && pnpm run format"
   },
   "keywords": [
     "deepagents",
