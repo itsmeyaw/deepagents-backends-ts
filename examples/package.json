@@ -1,5 +1,6 @@
 {
   "name": "deepagents-backends-ts-example",
+  "private": true,
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
